@@ -23,20 +23,19 @@ Run the following commands to create a conda environment, "cafo", with the neces
 conda env create -f environment.yml
 conda activate cafo
 ```
-
-If this is not working, go back to check whether you are on filter_updates branch. If not, create a local branch that tracks the filter_updates branch by: 
+If this is not working, go back to check whether you are on the correct branch. If not, create a local branch that tracks the filter_updates branch by: 
 ```bash
 git checkout -b filter_updates origin/filter_updates
 ```
 
 Download all the necessary datasets for filtering. Go to [google drive](https://drive.google.com/drive/folders/1bbgJTW_s_rVT3LhGZlAOOIREoBlDtR0J?usp=drive_link), download the entire folder named `geojson_to_filter` and save it within `2024-winter-rafi-poultry-cafos/data`
 
-
 ### There are two methods in which we can run the predictions, either by running the model on a specific region(image) or by downloading Microsoft's predictions and run the filtering on their generated predictions.
 
 ## Method 1: If you want to run the model yourself on a specific image(a small area)
 
 ### Step 1: Get image
+
 Use the command to get an image of desired area from NAIP:
 ```bash
 python3 get_image.py --bbox xmin ymin xmax ymax
@@ -68,6 +67,7 @@ srun -p general -t 6:00:00 --cpus-per-task=2 --mem=120GB --gres=gpu:1  --pty /bi
 Note you will need to do `conda activate cafo` again after you enter the node.
 
 The predictions will be saved under output folder. You need to manually write these paths in `data/test-postprocessing.txt`. The text file will look like this (each output filename will be different):
+
 ```bash
 image_fn
 "output/m_3407628_ne_18_060_20201018_predictions.tif"
