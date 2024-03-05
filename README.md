@@ -49,7 +49,7 @@ python3 get_image.py --bbox -77.820908 34.384567 -77.283021 34.730686
 ```
 e.g. this will create an image for an area in the North Carolina downtown Charlotte area.
 ```bash
-python3 get_image.py bbox: -80.9689 35.1636 -80.7433 35.3229
+python3 get_image.py --bbox -80.9689 35.1636 -80.7433 35.3229
 ```
 
 The tiff files will be saved under: `/net/projects/rafi/tifs/`\
