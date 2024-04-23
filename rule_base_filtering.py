@@ -57,13 +57,6 @@ def exclude_on_location(path, name, df, buffer_distance):
         geojson = gpd.read_file(path)
         polygon = geojson.to_crs(crs=df.crs)    
 
-    # apply buffer function when we set buffer over 0
-    if buffer > 0:
-        polygon = get_geojson_with_buffer(path, df, buffer)
-    else:
-        polygon = get_geojson(path, df)
-
-
     intersection = sjoin(
         df,
         polygon,
@@ -134,6 +127,9 @@ def exclude_on_land_cover(filtered_df):
     print("The dataframe has", len(filtered_df), "rows after label filtering")
     return filtered_df
 
+
+
+
 PATHS = ['data/geojson_to_filter_out/tl_2019_us_coastline',
          'data/geojson_to_filter_out/USA_Detailed_Water_Bodies.geojson',
          'data/geojson_to_filter_out/arcgis_FAA-Airports.geojson',
@@ -181,6 +177,6 @@ def main():
     print(f'The final dataframe has been saved to output/final_data_{region_code}.geojson')
 
 
+
 if __name__ == "__main__":
     main()
-
