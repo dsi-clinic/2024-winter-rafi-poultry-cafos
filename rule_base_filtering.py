@@ -3,30 +3,19 @@ import pandas as pd
 import ee
 import argparse as ap
 from geopandas.tools import sjoin
+import os
 
 service_account = "earth-engine-rafi@rafi-usa.iam.gserviceaccount.com"
 credentials = ee.ServiceAccountCredentials(service_account, "private-key.json")
 ee.Initialize(credentials)
 
 parser = ap.ArgumentParser()
-parser.add_argument("path", help="path to the file")
+parser.add_argument('path', help='Path to the file')
+parser.add_argument('-ee', '--ee', action='store_true', default=False, help='Whether to apply exclusion based on land cover')
+parser.add_argument('-bd', '--buffer_distance', type=float, default=0, help='Buffer distance value')
+
 args = parser.parse_args()
 
-
-def load_data(path):
-    """
-    Take in the data from the path and return a dataframe
-
-    Input:
-        path: path to the geojson file, usually the output after
-          running the postprocess.py
-
-    Output:
-        df: a dataframe with all the information from the geojson file"""
-
-    df = gpd.read_file(path)
-    print("The original datafrome has", len(df), "rows")
-    return df
 
 
 def filter_by_postprocess_rule(df):
@@ -37,52 +26,36 @@ def filter_by_postprocess_rule(df):
         df: a dataframe with all the information from the geojson file
 
     Output:
-        filtered_df: a dataframe that has been filtered by the postprocess rule"""
+        filtered_df: a dataframe that has been filtered by the postprocess rule
+    """
 
-    filtered_df = df.loc[df.rectangle_aspect_ratio.between(3.4, 20.49)].reset_index(
-        drop=True
-    )
-    filtered_df = filtered_df.loc[
-        filtered_df.distance_to_nearest_road != 0
-    ].reset_index(drop=True)
-    filtered_df = filtered_df.loc[filtered_df["area"].between(525.69, 8106.53)]
-    print("The dataframe has", len(filtered_df), "rows after post-processing")
+    filtered_df = df.loc[
+            (df.loc[:,'rectangle_aspect_ratio'].between(3.4, 20.49)) &
+            (df.loc[:,'distance_to_nearest_road'] >5) &  # DOUBT: unit of measure?
+            (df.loc[:,'area'].between(525.69, 8106.53)),
+        :].reset_index(drop=True)
+
+    print(f'The dataframe has {len(filtered_df)} rows after post-processing')
     return filtered_df
 
 
-def get_geojson(path, df):
+
+def exclude_on_location(path, name, df, buffer_distance):
     """
-    get the shapefile of downtown areas.
+    Reads filtering files and creates a buffer if needed.
+    Find the intersection between the prediction and polygon. Exclude these
     """
-
-    geojson = gpd.read_file(path)
-
-    polygon = geojson.to_crs(df.crs)
-    return polygon
-
-
-def get_geojson_with_buffer(path, df, buffer_distance):
-    """
-    get areas that are within a specified buffer distance.
-    """
-    # Create a buffer around the geojson
-    geojson = gpd.read_file(path)
-    # convert to crs where the unit in buffer is meter
-    geojson_data = geojson.to_crs(epsg=32633)
-    geojson_buffer = geojson_data.buffer(buffer_distance)
-    geojson_buffer_gdf = gpd.GeoDataFrame(geometry=geojson_buffer)
-    # match crs
-    geojson_buffer_gdf = geojson_buffer_gdf.to_crs(df.crs)
-    return geojson_buffer_gdf
-
-
-
-
-def exclude_on_location(df, path, name, buffer=0):
-    """
-    find the intersection between the predictions
-      and polygon and exclude these predictions
-    """
+    if buffer_distance != 0:
+        geojson = (gpd.read_file(path)
+                    .to_crs(epsg=32633)) # the unit in buffer is meter
+        
+        geojson_buffer = geojson.buffer(buffer_distance)
+        
+        polygon = (gpd.GeoDataFrame(geometry=geojson_buffer)
+                            .to_crs(crs=df.crs))
+    else:
+        geojson = gpd.read_file(path)
+        polygon = geojson.to_crs(crs=df.crs)    
 
     # apply buffer function when we set buffer over 0
     if buffer > 0:
@@ -94,17 +67,20 @@ def exclude_on_location(df, path, name, buffer=0):
     intersection = sjoin(
         df,
         polygon,
-        how="inner",
-        predicate="intersects",
-        lsuffix="_left",
-        rsuffix="_right",
+        how='inner',
+        predicate='intersects',
+        lsuffix='_left',
+        rsuffix='_right',
     )
-    # remove duplicated index in intesection
-    intersection_unique = intersection[~intersection.index.duplicated(keep="first")]
-    print(f"Number of barns in {name} area:", len(intersection_unique))
-    filtered_df = df[~df.index.isin(intersection_unique.index)].copy()
 
-    return filtered_df
+    df.loc[:,'false_positive'] = 0
+
+    intersection_unique = intersection[~intersection.index.duplicated(keep="first")]
+    print(f'Number of barns in {name} area: {len(intersection_unique)}')
+
+    df.loc[df.index.isin(intersection_unique.index),'false_positive']=1
+
+    return df
 
 
 def get_label_from_ee(df):
@@ -158,40 +134,53 @@ def exclude_on_land_cover(filtered_df):
     print("The dataframe has", len(filtered_df), "rows after label filtering")
     return filtered_df
 
+PATHS = ['data/geojson_to_filter_out/tl_2019_us_coastline',
+         'data/geojson_to_filter_out/USA_Detailed_Water_Bodies.geojson',
+         'data/geojson_to_filter_out/arcgis_FAA-Airports.geojson',
+         'data/geojson_to_filter_out/us_parks_arcgis.geojson',
+         'data/geojson_to_filter_out/Landscape_-_U.S._Mountain_Ranges.geojson']
+         #'data/geojson_to_filter_out/municipalities___states.geoparquet',
+         #'data/geojson_to_filter_out/arcgis_North_American_Roads.geojson']
 
-def save_to_geojson(filtered_df):
-    filtered_df.to_file("output/final_data.geojson", driver="GeoJSON")
-    print("The final dataframe has been saved to output/final_data.geojson")
-    return None
 
 
-def main(ee=False):
-    df = load_data(args.path)
-    # get polygon information
-    #downtown_polygon = gpd.read_parquet('data/geojson_to_filter_out/municipalities___states.geoparquet')
+def main():
 
-    # run Microsoft's preprocessing
+    if args is None:
+        raise ValueError('No arguments provided')
+
+    # Extracts the filename and splits it to get the region code
+    region_code = (os.path.basename(args.path)
+                   .split('_')[0].split('/')[0])
+
+    # Reads predictions and applies postprocess
+    df = gpd.read_file(args.path)
+    print(f'The original dataframe has {len(df)} rows')
+
     filtered_df = filter_by_postprocess_rule(df)
-    # run the exclusion rules
 
-    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/tl_2019_us_coastline', 'coastline', 150)
-    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/USA_Detailed_Water_Bodies.geojson', 'water')
-    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/arcgis_FAA-Airports.geojson', 'airport', 1500)
-    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/us_parks_arcgis.geojson', 'parks')
-    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/Landscape_-_U.S._Mountain_Ranges.geojson', 'mountains')
-    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/arcgis_North_American_Roads.geojson', 'roads', 100)
+    # Applies our filters
+    names = ['coastline',
+             'water',
+             'airport',
+             'parks',
+             'mountains']
+             #'downtowns',
+             #'roads']
 
+    for name, path in zip(names, PATHS):
+        filtered_df = exclude_on_location(path, name, filtered_df, args.buffer_distance)  
 
-    if ee:
+    if args.ee:
         filtered_df = exclude_on_land_cover(filtered_df)
-    print(
-        "The dataframe has",
-        len(filtered_df),
-        "rows after removing downtown, water, coastline, airport, roads and mountains area.",
-    )
-    # save to the output folder
-    save_to_geojson(filtered_df)
+    
+    print(f'The dataframe has {len(filtered_df.loc[filtered_df.loc[:,'false_positive']==0,:])} rows after filtering.')
+    
+    # Saves in a new geojson
+    filtered_df.to_file(f'output/final_data_{region_code}.geojson', driver='GeoJSON')
+    print(f'The final dataframe has been saved to output/final_data_{region_code}.geojson')
 
 
 if __name__ == "__main__":
     main()
+
