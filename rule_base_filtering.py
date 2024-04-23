@@ -78,11 +78,18 @@ def get_geojson_with_buffer(path, df, buffer_distance):
 
 
 
-def exclude_on_location(df, polygon, name):
+def exclude_on_location(df, path, name, buffer=0):
     """
     find the intersection between the predictions
       and polygon and exclude these predictions
     """
+
+    # apply buffer function when we set buffer over 0
+    if buffer > 0:
+        polygon = get_geojson_with_buffer(path, df, buffer)
+    else:
+        polygon = get_geojson(path, df)
+
 
     intersection = sjoin(
         df,
@@ -159,58 +166,28 @@ def save_to_geojson(filtered_df):
 
 
 def main(ee=False):
-    # TODO: Ok I feel like the logic here is still a bit wonky
-    # I'd recommend doing it like this:
-    # load the shapefile as a geodataframe (probably don't need functions to do this...)
-    # Then, the exclude_on_location functino could take a buffer argument
-
-    # So, it would be something like this:
-    # coastline = gpd.read_file("path/to/coastlines.geojson")
-    # df = exclude_on_location(df, coastline, buffer=100)
-
-    # Pseudocode for exclude_on_location:
-    # def exclude_on_location(df, df_exclude, buffer=None):
-    #    if buffer:
-    #        convert df_exclude to CRS with metters and buffer the geometry
-    #     df_exclude = df_exclude.to_crs(df.crs)
-    #     existing sjoin logic goes here
-    #    Note: it would be good to mark barns as excluded in a binary column rather than filtering them out
-    #    that way we can choose to display them or not to analyze our results (or compare with our validation set)
-    #    return df_filtered
-
-    # TODO: set up a DATA_FOLDER constant so you don't have to repeat this for each file
-    # and it's easy to change if the path changes
-    # DATA_FOLDER = "path/to/data"
-    # mountains = gpd.read_file(DATA_FOLDER + "mountains.geojson")
-    
     df = load_data(args.path)
     # get polygon information
     #downtown_polygon = gpd.read_parquet('data/geojson_to_filter_out/municipalities___states.geoparquet')
-    coastline_polygon = get_geojson_with_buffer('data/geojson_to_filter_out/tl_2019_us_coastline',df, 150)
-    water_polygon =  get_geojson('data/geojson_to_filter_out/USA_Detailed_Water_Bodies.geojson',df)
-    airports_polygon = get_geojson_with_buffer('data/geojson_to_filter_out/arcgis_FAA-Airports.geojson',df, 1500) #avg airport size: 1500-2500m
-    parks_polygon =  get_geojson('data/geojson_to_filter_out/us_parks_arcgis.geojson',df)
-    mountains_polygon =  get_geojson('data/geojson_to_filter_out/Landscape_-_U.S._Mountain_Ranges.geojson',df)
 
-    # TODO: the roads probably aren't working because we need to add a buffer to the roads — maybe 200m?
-    roads_polygon =  get_geojson('data/geojson_to_filter_out/arcgis_North_American_Roads.geojson',df)
-    
     # run Microsoft's preprocessing
     filtered_df = filter_by_postprocess_rule(df)
     # run the exclusion rules
-    #filtered_df = exclude_on_location(filtered_df, downtown_polygon, "downtown")
-    filtered_df = exclude_on_location(filtered_df, coastline_polygon, "coastline")
-    filtered_df = exclude_on_location(filtered_df, water_polygon, "water")
-    filtered_df = exclude_on_location(filtered_df, airports_polygon, "airport")
-    filtered_df = exclude_on_location(filtered_df, parks_polygon, "parks")
-    filtered_df = exclude_on_location(filtered_df, mountains_polygon, "mountains")
-    filtered_df = exclude_on_location(filtered_df, roads_polygon, "roads")
+
+    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/tl_2019_us_coastline', 'coastline', 150)
+    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/USA_Detailed_Water_Bodies.geojson', 'water')
+    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/arcgis_FAA-Airports.geojson', 'airport', 1500)
+    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/us_parks_arcgis.geojson', 'parks')
+    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/Landscape_-_U.S._Mountain_Ranges.geojson', 'mountains')
+    filtered_df = exclude_on_location(filtered_df, 'data/geojson_to_filter_out/arcgis_North_American_Roads.geojson', 'roads', 100)
+
+
     if ee:
         filtered_df = exclude_on_land_cover(filtered_df)
     print(
         "The dataframe has",
         len(filtered_df),
-        "rows after removing downtown, water, coastline and airport area.",
+        "rows after removing downtown, water, coastline, airport, roads and mountains area.",
     )
     # save to the output folder
     save_to_geojson(filtered_df)
