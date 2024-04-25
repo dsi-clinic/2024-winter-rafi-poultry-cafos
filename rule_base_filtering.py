@@ -12,7 +12,6 @@ ee.Initialize(credentials)
 parser = ap.ArgumentParser()
 parser.add_argument('path', help='Path to the file')
 parser.add_argument('-ee', '--ee', action='store_true', default=False, help='Whether to apply exclusion based on land cover')
-parser.add_argument('-bd', '--buffer_distance', type=float, default=0, help='Buffer distance value')
 
 args = parser.parse_args()
 
@@ -31,7 +30,7 @@ def filter_by_postprocess_rule(df):
 
     filtered_df = df.loc[
             (df.loc[:,'rectangle_aspect_ratio'].between(3.4, 20.49)) &
-            (df.loc[:,'distance_to_nearest_road'] >5) &  # DOUBT: unit of measure?
+            (df.loc[:,'distance_to_nearest_road'] != 0) &  # DOUBT: unit of measure?
             (df.loc[:,'area'].between(525.69, 8106.53)),
         :].reset_index(drop=True)
 
@@ -45,17 +44,19 @@ def exclude_on_location(path, name, df, buffer_distance):
     Reads filtering files and creates a buffer if needed.
     Find the intersection between the prediction and polygon. Exclude these
     """
-    if buffer_distance != 0:
-        geojson = (gpd.read_file(path)
-                    .to_crs(epsg=32633)) # the unit in buffer is meter
-        
-        geojson_buffer = geojson.buffer(buffer_distance)
-        
-        polygon = (gpd.GeoDataFrame(geometry=geojson_buffer)
-                            .to_crs(crs=df.crs))
+
+    if path.endswith('.geoparquet'):
+        geojson = (gpd.read_parquet(path)
+                  .to_crs(epsg=32633))
     else:
-        geojson = gpd.read_file(path)
-        polygon = geojson.to_crs(crs=df.crs)    
+        geojson = (gpd.read_file(path)
+                  .to_crs(epsg=32633)) # the unit in buffer is meter
+    
+    geojson_buffer = geojson.buffer(buffer_distance)
+    
+    polygon = (gpd.GeoDataFrame(geometry=geojson_buffer)
+                        .to_crs(crs=df.crs))
+  
 
     intersection = sjoin(
         df,
@@ -71,7 +72,7 @@ def exclude_on_location(path, name, df, buffer_distance):
     intersection_unique = intersection[~intersection.index.duplicated(keep="first")]
     print(f'Number of barns in {name} area: {len(intersection_unique)}')
 
-    df.loc[df.index.isin(intersection_unique.index),'false_positive']=1
+    df.loc[df.index.isin(intersection_unique.index),'false_positive'] = 1
 
     return df
 
@@ -119,7 +120,8 @@ def exclude_on_land_cover(filtered_df):
 
     Output:
         filtered_df: a dataframe that has been filtered by the postprocess
-        rule and terrain label"""
+        rule and terrain label
+    """
     filtered_df["terrain_label"] = filtered_df["geometry"].apply(get_label_from_ee)
     filtered_df = filtered_df[~filtered_df["terrain_label"].isin([0])]
 
@@ -156,16 +158,16 @@ def main():
     filtered_df = filter_by_postprocess_rule(df)
 
     # Applies our filters
-    names = ['coastline',
-             'water',
-             'airport',
-             'parks',
-             'mountains']
-             #'downtowns',
-             #'roads']
+    filters = [{'name':'coastline', 'dist': 150},
+               {'name':'water', 'dist': 0},
+               {'name':'airport', 'dist': 1500},
+               {'name':'parks', 'dist': 0},
+               {'name':'mountains', 'dist': 0}]#,
+               #{'name':'downtown', 'dist': 0},
+               #{'name':'roads', 'dist': 100}]
 
-    for name, path in zip(names, PATHS):
-        filtered_df = exclude_on_location(path, name, filtered_df, args.buffer_distance)  
+    for filt, path in zip(filters, PATHS):
+        filtered_df = exclude_on_location(path, filt['name'], filtered_df, filt['dist'])  
 
     if args.ee:
         filtered_df = exclude_on_land_cover(filtered_df)
