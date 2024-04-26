@@ -34,9 +34,10 @@ def filter_by_postprocess_rule(df):
             (df.loc[:,'area'].between(525.69, 8106.53)),
         :].reset_index(drop=True)
 
+    filtered_df.loc[:,'false_positive'] = 0
+
     print(f'The dataframe has {len(filtered_df)} rows after post-processing')
     return filtered_df
-
 
 
 def exclude_on_location(path, name, df, buffer_distance):
@@ -67,7 +68,6 @@ def exclude_on_location(path, name, df, buffer_distance):
         rsuffix='_right',
     )
 
-    df.loc[:,'false_positive'] = 0
 
     intersection_unique = intersection[~intersection.index.duplicated(keep="first")]
     print(f'Number of barns in {name} area: {len(intersection_unique)}')
