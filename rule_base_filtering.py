@@ -37,7 +37,8 @@ def filter_by_postprocess_rule(df):
     filtered_df.loc[:,'false_positive'] = 0
 
     print(f'The dataframe has {len(filtered_df)} rows after post-processing')
-    return filtered_df
+    text = f'The dataframe has {len(filtered_df)} rows after post-processing'
+    return filtered_df, text
 
 
 def exclude_on_location(path, name, df, buffer_distance):
@@ -71,10 +72,11 @@ def exclude_on_location(path, name, df, buffer_distance):
 
     intersection_unique = intersection[~intersection.index.duplicated(keep="first")]
     print(f'Number of barns in {name} area: {len(intersection_unique)}')
+    filter_text = f'Number of barns in {name} area: {len(intersection_unique)}'
 
     df.loc[df.index.isin(intersection_unique.index),'false_positive'] = 1
 
-    return df
+    return df, filter_text
 
 
 def get_label_from_ee(df):
@@ -136,9 +138,11 @@ PATHS = ['data/geojson_to_filter_out/tl_2019_us_coastline',
          'data/geojson_to_filter_out/USA_Detailed_Water_Bodies.geojson',
          'data/geojson_to_filter_out/arcgis_FAA-Airports.geojson',
          'data/geojson_to_filter_out/us_parks_arcgis.geojson',
-         'data/geojson_to_filter_out/Landscape_-_U.S._Mountain_Ranges.geojson']
+         'data/geojson_to_filter_out/Landscape_-_U.S._Mountain_Ranges.geojson',
+         'data/geojson_to_filter_out/arcgis_North_American_Roads.geojson',
+         'data/geojson_to_filter_out/USA_Railroads.geojson']
          #'data/geojson_to_filter_out/municipalities___states.geoparquet',
-         #'data/geojson_to_filter_out/arcgis_North_American_Roads.geojson']
+
 
 
 
@@ -151,33 +155,48 @@ def main():
     region_code = (os.path.basename(args.path)
                    .split('_')[0].split('/')[0])
 
+    text_lst = []
+
     # Reads predictions and applies postprocess
     df = gpd.read_file(args.path)
     print(f'The original dataframe has {len(df)} rows')
+    text_lst.append(f'The original dataframe has {len(df)} rows')
 
-    filtered_df = filter_by_postprocess_rule(df)
+    filtered_df, text = filter_by_postprocess_rule(df)
+    text_lst.append(text)
 
     # Applies our filters
     filters = [{'name':'coastline', 'dist': 150},
                {'name':'water', 'dist': 0},
                {'name':'airport', 'dist': 1500},
                {'name':'parks', 'dist': 0},
-               {'name':'mountains', 'dist': 0}]#,
+               {'name':'mountains', 'dist': 0},
+               {'name':'roads', 'dist': 100},
+               {'name':'rail', 'dist': 100}]
                #{'name':'downtown', 'dist': 0},
-               #{'name':'roads', 'dist': 100}]
+
+
 
     for filt, path in zip(filters, PATHS):
-        filtered_df = exclude_on_location(path, filt['name'], filtered_df, filt['dist'])  
+        filtered_df, text = exclude_on_location(path, filt['name'], filtered_df, filt['dist'])
+        text_lst.append(text)
 
     if args.ee:
-        filtered_df = exclude_on_land_cover(filtered_df)
+        filtered_df, text = exclude_on_land_cover(filtered_df)
+        text_lst.append(text)
     
-    print(f'The dataframe has {len(filtered_df.loc[filtered_df.loc[:,'false_positive']==0,:])} rows after filtering.')
-    
+    print(f'The dataframe has {len(filtered_df.loc[filtered_df.loc[:,"false_positive"]==0,:])} rows after filtering.')
+    text_lst.append(f'The dataframe has {len(filtered_df.loc[filtered_df.loc[:,"false_positive"]==0,:])} rows after filtering.')
+
     # Saves in a new geojson
     filtered_df.to_file(f'output/final_data_{region_code}.geojson', driver='GeoJSON')
     print(f'The final dataframe has been saved to output/final_data_{region_code}.geojson')
 
+    # Save the process to a txt file
+    with open(f'output/result_{region_code}.txt', 'w') as file:
+        for item in text_lst:
+            # Write each item on a new line
+            file.write(f"{item}\n")
 
 
 if __name__ == "__main__":
