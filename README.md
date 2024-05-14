@@ -115,9 +115,8 @@ Go back to the `notesbooks/Data Exploration.ipynb` and run the cells in the `Dat
 3. Barns in water areas are filtered out
 4. Barns in airports are filtered out.
 
-
-
-
+### Step 4(Optional): Data Annotation
+We developed a user-friendly data annotation tool, humorously dubbed "Tinder for Barns," to assist users in manually verifying the accuracy of model predictions. This process is crucial, as true positive images will help us fine-tune the model in future iterations. You can explore the tool on Colab [here](https://colab.research.google.com/drive/1Os1_D2nqYwSH3bC5_nTtEVleVGwftcDR?usp=sharing).
 
 Below here is the Microsoft README
 
