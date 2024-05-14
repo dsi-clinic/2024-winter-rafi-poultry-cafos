@@ -119,6 +119,8 @@ Go back to the `notesbooks/Data Exploration.ipynb` and run the cells in the `Dat
 
 We developed a user-friendly data annotation tool, humorously dubbed "Tinder for Barns," to assist users in manually verifying the accuracy of model predictions. This process is crucial, as true positive images will help us fine-tune the model in future iterations. You can explore the tool on Colab [here](https://colab.research.google.com/drive/1Os1_D2nqYwSH3bC5_nTtEVleVGwftcDR?usp=sharing).
 
+For demonstration purposes, you can download the [prediction results](https://drive.google.com/file/d/1jXX41owpzMm7BJmUEVpOY7uU2x8nnkLB/view?usp=drive_link) after applying the rule-based filter for Nebraska and explore them.
+
 Below here is the Microsoft README
 
 # Poultry barn mapping
