@@ -45,3 +45,5 @@ dependencies:
     - earthengine-api
     - pystac_client
     - planetary_computer
+    - ipyleaflet
+    - ipywidget
