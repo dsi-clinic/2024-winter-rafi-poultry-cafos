@@ -19,7 +19,9 @@ args = parser.parse_args()
 
 def filter_by_postprocess_rule(df):
     """
-    Filter the dataframe by the postprocess rule
+    Applies postprocess rule filters, related to the shape and size, as well as
+    to distance to roads.
+    Creates a column for flase positives and sets 0 as default value.
 
     Input:
         df: a dataframe with all the information from the geojson file
@@ -30,21 +32,32 @@ def filter_by_postprocess_rule(df):
 
     filtered_df = df.loc[
             (df.loc[:,'rectangle_aspect_ratio'].between(3.4, 20.49)) &
-            (df.loc[:,'distance_to_nearest_road'] != 0) &  # DOUBT: unit of measure?
+            (df.loc[:,'distance_to_nearest_road'] != 0) &
             (df.loc[:,'area'].between(525.69, 8106.53)),
         :].reset_index(drop=True)
 
     filtered_df.loc[:,'false_positive'] = 0
 
-    print(f'The dataframe has {len(filtered_df)} rows after post-processing')
     text = f'The dataframe has {len(filtered_df)} rows after post-processing'
+    print(text)
+
     return filtered_df, text
 
 
 def exclude_on_location(path, name, df, buffer_distance):
     """
     Reads filtering files and creates a buffer if needed.
-    Find the intersection between the prediction and polygon. Exclude these
+    Finds the intersection between the prediction and polygon.
+    Excludes these and labels them as false positive.
+
+    Input:
+        path: path to the filters GIS files
+        name: label defining the filter
+        df: predictions, after filter_by_postprocess_rule
+        buffer_distance: distance used for the buffer
+    Output:
+        df: predictions, after applying the filter
+        filter_text: summary of the filtering process
     """
 
     if path.endswith('.geoparquet'):
@@ -71,9 +84,9 @@ def exclude_on_location(path, name, df, buffer_distance):
 
 
     intersection_unique = intersection[~intersection.index.duplicated(keep="first")]
-    print(f'Number of barns in {name} area: {len(intersection_unique)}')
     filter_text = f'Number of barns in {name} area: {len(intersection_unique)}'
-
+    print(filter_text)
+    
     df.loc[df.index.isin(intersection_unique.index),'false_positive'] = 1
 
     return df, filter_text
@@ -140,8 +153,8 @@ PATHS = ['data/geojson_to_filter_out/tl_2019_us_coastline',
          'data/geojson_to_filter_out/us_parks_arcgis.geojson',
          'data/geojson_to_filter_out/Landscape_-_U.S._Mountain_Ranges.geojson',
          'data/geojson_to_filter_out/arcgis_North_American_Roads.geojson',
-         'data/geojson_to_filter_out/USA_Railroads.geojson']
-         #'data/geojson_to_filter_out/municipalities___states.geoparquet',
+         'data/geojson_to_filter_out/USA_Railroads.geojson',
+         'data/geojson_to_filter_out/municipalities___states.geoparquet']
 
 
 
@@ -172,8 +185,8 @@ def main():
                {'name':'parks', 'dist': 0},
                {'name':'mountains', 'dist': 0},
                {'name':'roads', 'dist': 100},
-               {'name':'rail', 'dist': 100}]
-               #{'name':'downtown', 'dist': 0},
+               {'name':'rail', 'dist': 100},
+               {'name':'downtown', 'dist': 0}]
 
 
 
