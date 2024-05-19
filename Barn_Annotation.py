@@ -11,7 +11,7 @@ def classify_poultry_barns(geojson_path):
 
     if not os.path.exists('/content/2024-winter-rafi-poultry-cafos/output/checked_barns_indices.txt'):
         with open('/content/2024-winter-rafi-poultry-cafos/output/checked_barns_indices.txt', 'w') as file:
-            pass
+            checked_indices = []
 
     with open('/content/2024-winter-rafi-poultry-cafos/output/checked_barns_indices.txt', 'r') as file:
         lines = file.readlines()
