@@ -5,17 +5,17 @@ import geopandas as gpd
 import pandas as pd
 import os
 
-def classify_poultry_barns():
+def classify_poultry_barns(geojson_path):
     # Load the GeoJSON data
-    geojson_path = '/content/2024-winter-rafi-poultry-cafos/output/final_data_ne.geojson'
     poultry_barns = gpd.read_file(geojson_path)
 
-    if os.path.exists('/content/2024-winter-rafi-poultry-cafos/output/checked_barns_indices.txt'):
-        with open('/content/2024-winter-rafi-poultry-cafos/output/checked_barns_indices.txt', 'r') as file:
-            lines = file.readlines()
-        checked_indices = [(int(line.strip().split(',')[0]), int(line.strip().split(',')[1])) for line in lines]
-    else:
-        checked_indices = []  # Initialize if the file doesn't exist
+    if not os.path.exists('/content/2024-winter-rafi-poultry-cafos/output/checked_barns_indices.txt'):
+        with open('/content/2024-winter-rafi-poultry-cafos/output/checked_barns_indices.txt', 'w') as file:
+            checked_indices = []
+
+    with open('/content/2024-winter-rafi-poultry-cafos/output/checked_barns_indices.txt', 'r') as file:
+        lines = file.readlines()
+    checked_indices = [(int(line.strip().split(',')[0]), int(line.strip().split(',')[1])) for line in lines]
 
     poultry_barns = poultry_barns[poultry_barns['false_positive'] != 1]
     ori_length = len(poultry_barns)
