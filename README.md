@@ -121,6 +121,16 @@ We developed a user-friendly data annotation tool, humorously dubbed "Tinder for
 
 For demonstration purposes, you can download the [prediction results](https://drive.google.com/file/d/1jXX41owpzMm7BJmUEVpOY7uU2x8nnkLB/view?usp=drive_link) after applying the rule-based filter for Nebraska and explore them.
 
+### Step 6(Optional): Validation Set
+
+We can use the notebook `notebooks/Validation Set.ipynb` to perform validation on the filtered predictions output from Step 3, which is stored in `output/final_data.geojson`. This allows us to evaluate the model's performance.
+
+- Run the first cell in the notebook to create a validation set. This is done by randomly selecting a point on the map and then creating a bounding box around the 50 closest barns to that point. Within this bounding box, you can then mark all false positives, false negatives, etc.
+
+- Run the second cell to save the indices of marked false positives to `/output/false_positives.txt` and the coordinates of marked false negatives to `/output/false_negatives.txt`.
+
+- Finally, we can manually plot the confusion matrix (excluding true negatives) as well as precision and recall rates to assess the model's accuracy and reliability.
+
 Below here is the Microsoft README
 
 # Poultry barn mapping
