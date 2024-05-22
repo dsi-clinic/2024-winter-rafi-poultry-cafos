@@ -77,14 +77,14 @@ python postprocess.py --input_fn data/test-postprocessing.txt --output_fn output
 It will generate a geojson file under `output` folder. It contains all the original predictions from the model with extra information from post processing, which will be used later to filter the false positives.
 
 ### Step 4: Run the filtering
-Currently, we are not running the Google Earth API because it takes a very long time to run it on the entire North Carolina. If you would like to do it, you can give the `main()` function an argument of `True`. You should then download the [JSON file](https://drive.google.com/drive/folders/1DSmn-vF4FXlxHlVbKwSWJY7eXqOJaC2w?usp=drive_link) for authenticating to Google Earth Engine and save it in the root directory of the repository as `private-key.json`. It will have a name something like `rafi-usa-<id_string>.json` in Google Drive.
+Currently, we are not running the Google Earth API because it takes a very long time to run it on the entire North Carolina. If you would like to do it, you can give the `main()` function an argument of `True`. You should then download the [JSON file](https://drive.google.com/drive/folders/1DSmn-vF4FXlxHlVbKwSWJY7eXqOJaC2w?usp=drive_link) for authenticating to Google Earth Engine and save it in the root directory of the repository as `private-key.json`. It will have a name something like `rafi-usa-<id_string>.json` in Google Drive. Also, spatial data files must be downloaded from [here](https://drive.google.com/drive/u/1/folders/1bbgJTW_s_rVT3LhGZlAOOIREoBlDtR0J) and added to the folder `data/geojson_to_filter_out`.
 
 Run the filtering script:
 
 ```bash
 python3 rule_base_filtering.py path_to_geojson_file
 ```
-The script generates a final prediction geojson file in `final_data.geojson`
+The script generates a final prediction geojson file in `final_data_nc.geojson`, for the case of North Carolina (the last 2 letters will adjust to the state name).
 
 
 
@@ -103,9 +103,9 @@ Since the full US data will takes a long time to run, we will focus on North Car
 python3 rule_base_filtering.py /path/to/geojson/file
 ```
 In this case, the `/path/to/geojson/file` should be `output/nc_predictions.geojson`
-The file will generate and save the filtered version of predictions in `output/final_data.geojson`
+The file will generate and save the filtered version of predictions in `output/final_data_nc.geojson`
 
-Note on step 3: currently we are not running the Google Earth API because it takes a very long time to run it on the entire North Carolina. If you would like to do it, you can give the `main()` function an argument of `True`. You should then download the [JSON file](https://drive.google.com/drive/folders/1DSmn-vF4FXlxHlVbKwSWJY7eXqOJaC2w?usp=drive_link) for authenticating to Google Earth Engine and save it in the root directory of the repository as `private-key.json`. It will have a name something like `rafi-usa-<id_string>.json` in Google Drive.
+Note on step 3: currently we are not running the Google Earth API because it takes a very long time to run it on the entire North Carolina. If you would like to do it, you can give the `main()` function an argument of `True`. You should then download the [JSON file](https://drive.google.com/drive/folders/1DSmn-vF4FXlxHlVbKwSWJY7eXqOJaC2w?usp=drive_link) for authenticating to Google Earth Engine and save it in the root directory of the repository as `private-key.json`. It will have a name something like `rafi-usa-<id_string>.json` in Google Drive. Also, spatial data files must be downloaded from [here](https://drive.google.com/drive/u/1/folders/1bbgJTW_s_rVT3LhGZlAOOIREoBlDtR0J) and added to the folder `data/geojson_to_filter_out`.
 
 
 ### Step 4(Optional): Visualizing the filtering
